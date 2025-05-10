@@ -17,6 +17,7 @@ import {
   FormControlLabel,
   FormControl,
   CircularProgress,
+  CardMedia,
 } from '@mui/material';
 import {
   ArrowBack,
@@ -29,6 +30,11 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import LoadingSpinner from './LoadingSpinner';
+import Lottie from 'lottie-react';
+import playQuizLottie from '../assets/PlayQuiz.json';
+import loadingAnimation from '../assets/loading1.json';
+
+const QUIZ_TIME_LIMIT = 60; // 1 minute in seconds
 
 const Quiz = () => {
   const [currentQuestion, setCurrentQuestion] = useState(0);
@@ -36,8 +42,9 @@ const Quiz = () => {
   const [quiz, setQuiz] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(null);
+  const [timeLeft, setTimeLeft] = useState(QUIZ_TIME_LIMIT);
   const [showResults, setShowResults] = useState(false);
+  const [isNavigating, setIsNavigating] = useState(false);
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -84,7 +91,7 @@ const Quiz = () => {
 
     const timer = setInterval(() => {
       setTimeLeft((prev) => {
-        if (prev <= 0) {
+        if (prev <= 1) {
           clearInterval(timer);
           handleSubmit();
           return 0;
@@ -101,18 +108,26 @@ const Quiz = () => {
   };
 
   const handleNextQuestion = () => {
-    if (currentQuestion < quiz.questions.length - 1) {
-      setCurrentQuestion(currentQuestion + 1);
-      setSelectedAnswer('');
-    } else {
-      handleSubmit();
-    }
+    setIsNavigating(true);
+    setTimeout(() => {
+      if (currentQuestion < quiz.questions.length - 1) {
+        setCurrentQuestion(currentQuestion + 1);
+        setSelectedAnswer('');
+      } else {
+        handleSubmit();
+      }
+      setIsNavigating(false);
+    }, 500);
   };
 
   const handlePrevious = () => {
-    if (currentQuestion > 0) {
-      setCurrentQuestion((prev) => prev - 1);
-    }
+    setIsNavigating(true);
+    setTimeout(() => {
+      if (currentQuestion > 0) {
+        setCurrentQuestion((prev) => prev - 1);
+      }
+      setIsNavigating(false);
+    }, 500);
   };
 
   const handleSubmit = () => {
@@ -205,7 +220,7 @@ const Quiz = () => {
               <Box sx={{ textAlign: 'center', mb: 4 }}>
                 <Typography variant="h2" component="div" sx={{ 
                   fontWeight: 'bold',
-                  color: score >= 70 ? 'success.main' : score >= 40 ? 'warning.main' : 'error.main'
+                  color: '#FFD700'
                 }}>
                   {score.toFixed(1)}%
                 </Typography>
@@ -256,29 +271,132 @@ const Quiz = () => {
   const progress = ((currentQuestion + 1) / quiz.questions.length) * 100;
 
   return (
-    <Box sx={{ py: 8, minHeight: '100vh', bgcolor: 'background.default' }}>
-      <Container maxWidth="md">
+    <Box sx={{ 
+      minHeight: '100vh', 
+      display: 'flex',
+      bgcolor: 'background.default'
+    }}>
+      {/* Loading Overlay */}
+      {isNavigating && (
+        <Box
+          sx={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            bgcolor: 'rgba(255, 255, 255, 0.9)',
+            zIndex: 9999,
+          }}
+        >
+          <Box sx={{ width: 200, height: 200 }}>
+            <Lottie
+              animationData={loadingAnimation}
+              loop={true}
+              style={{ width: '100%', height: '100%' }}
+            />
+          </Box>
+        </Box>
+      )}
+
+      {/* Animation Section - Full Left Screen */}
+      <Box sx={{ 
+        width: '50%',
+        display: 'flex',
+        justifyContent: 'center',
+        alignItems: 'center',
+        bgcolor: '#FFD700',
+        position: 'fixed',
+        left: 0,
+        top: 0,
+        bottom: 0,
+        zIndex: 1
+      }}>
+        <Lottie 
+          animationData={playQuizLottie} 
+          style={{ 
+            width: '100%', 
+            height: '100%',
+            maxWidth: '100%',
+            maxHeight: '100%'
+          }} 
+          loop={true} 
+        />
+      </Box>
+
+      {/* Quiz Content Section - Right Half */}
+      <Box sx={{ 
+        width: '50%',
+        ml: '50%',
+        p: 4,
+        position: 'relative',
+        zIndex: 2
+      }}>
         <Paper
           elevation={3}
           sx={{ 
             p: 4,
             borderRadius: 2,
+            bgcolor: 'background.paper',
+            height: '100%'
           }}
         >
-          <Typography variant="h4" gutterBottom>
-            {quiz.title}
-          </Typography>
-
+          {/* Timer and Progress */}
           <Box sx={{ mb: 4 }}>
-            <Typography variant="body2" color="text.secondary">
-              Question {currentQuestion + 1} of {quiz.questions.length}
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+              <Typography variant="h6" color="primary">
+                Time Left: {Math.floor(timeLeft / 60)}:{(timeLeft % 60).toString().padStart(2, '0')}
+              </Typography>
+              <Typography variant="h6" color="primary">
+                Question {currentQuestion + 1} of {quiz.questions.length}
+              </Typography>
+            </Box>
+            <LinearProgress 
+              variant="determinate" 
+              value={progress} 
+              sx={{ height: 10, borderRadius: 5 }}
+            />
           </Box>
 
-          <Typography variant="h5" gutterBottom>
-              {currentQ.question}
-            </Typography>
+          {/* Question Content */}
+          <Typography variant="h5" gutterBottom sx={{ mb: 4 }}>
+            {currentQ.question}
+          </Typography>
 
+          {/* Media Content */}
+          {currentQ.type !== 'text' && currentQ.mediaUrl && (
+            <Box sx={{ mb: 4 }}>
+              {currentQ.type === 'image' && (
+                <Card sx={{ maxWidth: '100%', mb: 2 }}>
+                  <CardMedia
+                    component="img"
+                    image={currentQ.mediaUrl}
+                    alt="Question image"
+                    sx={{ maxHeight: 400, objectFit: 'contain' }}
+                  />
+                </Card>
+              )}
+              {currentQ.type === 'video' && (
+                <Box sx={{ mb: 2 }}>
+                  <video
+                    controls
+                    src={currentQ.mediaUrl}
+                    style={{ maxWidth: '100%', maxHeight: 400 }}
+                  />
+                </Box>
+              )}
+              {currentQ.type === 'audio' && (
+                <Box sx={{ mb: 2 }}>
+                  <audio controls src={currentQ.mediaUrl} style={{ width: '100%' }} />
+                </Box>
+              )}
+            </Box>
+          )}
+
+          {/* Answer Options */}
           <FormControl component="fieldset" sx={{ width: '100%', mb: 4 }}>
             <RadioGroup
               value={selectedAnswer}
@@ -293,9 +411,10 @@ const Quiz = () => {
                   sx={{
                     mb: 2,
                     p: 2,
-                    borderRadius: 1,
+                    borderRadius: 2,
                     border: '1px solid',
                     borderColor: selectedAnswer === option.text ? 'primary.main' : 'divider',
+                    bgcolor: selectedAnswer === option.text ? 'primary.light' : 'background.paper',
                     '&:hover': {
                       bgcolor: 'action.hover',
                     },
@@ -305,18 +424,28 @@ const Quiz = () => {
             </RadioGroup>
           </FormControl>
 
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-          <Button
-            variant="contained"
-              size="large"
+          {/* Navigation Buttons */}
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 4 }}>
+            <Button
+              variant="outlined"
+              onClick={handlePrevious}
+              disabled={currentQuestion === 0}
+              startIcon={<ArrowBack />}
+              sx={{ borderRadius: 2, px: 3 }}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="contained"
               onClick={handleNextQuestion}
-              disabled={!selectedAnswer}
+              endIcon={<ArrowForward />}
+              sx={{ borderRadius: 2, px: 3 }}
             >
               {currentQuestion === quiz.questions.length - 1 ? 'Finish' : 'Next'}
-          </Button>
-      </Box>
+            </Button>
+          </Box>
         </Paper>
-      </Container>
+      </Box>
     </Box>
   );
 };

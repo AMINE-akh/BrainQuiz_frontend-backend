@@ -1,177 +1,287 @@
 import React, { useState, useEffect } from 'react';
 import {
+  Box,
   Container,
   Grid,
   Paper,
   Typography,
-  Box,
-  CircularProgress,
-  Alert,
+  Button,
   Card,
   CardContent,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
+  CardActions,
+  CircularProgress,
+  Alert,
+  Chip,
 } from '@mui/material';
+import {
+  Quiz as QuizIcon,
+  Star as StarIcon,
+  Timer as TimerIcon,
+  TrendingUp as TrendingUpIcon,
+} from '@mui/icons-material';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
-import QuizIcon from '@mui/icons-material/Quiz';
-import TimerIcon from '@mui/icons-material/Timer';
+import axios from 'axios';
 
 const Dashboard = () => {
-  const { user } = useAuth();
-  const [stats, setStats] = useState(null);
-  const [recentActivity, setRecentActivity] = useState([]);
+  const [stats, setStats] = useState({
+    totalQuizzes: 0,
+    averageScore: 0,
+    timeSpent: 0,
+    improvement: 0
+  });
+  const [recentQuizzes, setRecentQuizzes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const response = await fetch('/api/dashboard', {
+        const token = localStorage.getItem('token');
+        
+        // Fetch stats
+        try {
+          const statsResponse = await axios.get('http://127.0.0.1:8000/api/dashboard/stats', {
           headers: {
+              'Authorization': `Bearer ${token}`,
             'Accept': 'application/json',
-            'Content-Type': 'application/json',
           },
         });
-
-        if (!response.ok) {
-          throw new Error('Failed to fetch dashboard data');
+          if (statsResponse.data) {
+            setStats(statsResponse.data);
+          }
+        } catch (statsError) {
+          console.warn('Stats fetch error:', statsError);
+          // Keep default stats values
         }
 
-        const data = await response.json();
-        setStats(data.stats);
-        setRecentActivity(data.recentActivity);
+        // Fetch recent quizzes
+        try {
+          const quizzesResponse = await axios.get('http://127.0.0.1:8000/api/dashboard/recent-quizzes', {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/json',
+            },
+          });
+          if (quizzesResponse.data) {
+            setRecentQuizzes(Array.isArray(quizzesResponse.data) ? quizzesResponse.data : []);
+          }
+        } catch (quizzesError) {
+          console.warn('Recent quizzes fetch error:', quizzesError);
+          setRecentQuizzes([]);
+        }
+
+        setError(null);
       } catch (err) {
-        setError(err.message);
+        console.error('Dashboard data fetch error:', err);
+        setError('Some data could not be loaded. Please try again later.');
       } finally {
         setLoading(false);
       }
     };
 
+    if (user) {
     fetchDashboardData();
-  }, []);
+    }
+  }, [user]);
 
   if (loading) {
     return (
-      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+      <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
         <CircularProgress />
       </Box>
     );
   }
 
-  if (error) {
-    return (
-      <Container maxWidth="lg" sx={{ mt: 4 }}>
-        <Alert severity="error">{error}</Alert>
-      </Container>
-    );
-  }
-
   return (
     <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      {/* Welcome Section */}
+      <Box sx={{ mb: 4 }}>
       <Typography variant="h4" component="h1" gutterBottom>
-        Dashboard
+          Welcome back, {user?.name || 'User'}!
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Track your progress and continue learning
       </Typography>
+      </Box>
 
-      <Grid container spacing={3}>
-        {/* Stats Cards */}
-        <Grid item xs={12} md={4}>
+      {error && (
+        <Alert severity="warning" sx={{ mb: 4 }}>
+          {error}
+        </Alert>
+      )}
+
+      {/* Stats Grid */}
+      <Grid container spacing={3} sx={{ mb: 4 }}>
+        <Grid item xs={12} sm={6} md={3}>
           <Paper
             sx={{
-              p: 2,
+              p: 3,
               display: 'flex',
               flexDirection: 'column',
-              height: 140,
-              bgcolor: '#e3f2fd',
+              alignItems: 'center',
+              bgcolor: 'primary.light',
+              color: 'primary.contrastText',
             }}
           >
-            <Box display="flex" alignItems="center" mb={1}>
-              <EmojiEventsIcon sx={{ mr: 1, color: '#1976d2' }} />
-              <Typography variant="h6" color="text.secondary">
-                Total Score
+            <QuizIcon sx={{ fontSize: 40, mb: 1 }} />
+            <Typography variant="h4" component="div">
+              {stats.totalQuizzes}
               </Typography>
-            </Box>
-            <Typography variant="h3" component="div">
-              {stats?.totalScore || 0}
-            </Typography>
+            <Typography variant="body2">Total Quizzes</Typography>
           </Paper>
         </Grid>
-
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={3}>
           <Paper
             sx={{
-              p: 2,
+              p: 3,
               display: 'flex',
               flexDirection: 'column',
-              height: 140,
-              bgcolor: '#f3e5f5',
+              alignItems: 'center',
+              bgcolor: 'success.light',
+              color: 'success.contrastText',
             }}
           >
-            <Box display="flex" alignItems="center" mb={1}>
-              <QuizIcon sx={{ mr: 1, color: '#9c27b0' }} />
-              <Typography variant="h6" color="text.secondary">
-                Quizzes Completed
-              </Typography>
-            </Box>
-            <Typography variant="h3" component="div">
-              {stats?.quizzesCompleted || 0}
+            <StarIcon sx={{ fontSize: 40, mb: 1 }} />
+            <Typography variant="h4" component="div">
+              {stats.averageScore}%
             </Typography>
+            <Typography variant="body2">Average Score</Typography>
           </Paper>
         </Grid>
-
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} sm={6} md={3}>
           <Paper
             sx={{
-              p: 2,
+              p: 3,
               display: 'flex',
               flexDirection: 'column',
-              height: 140,
-              bgcolor: '#e8f5e9',
+              alignItems: 'center',
+              bgcolor: 'warning.light',
+              color: 'warning.contrastText',
             }}
           >
-            <Box display="flex" alignItems="center" mb={1}>
-              <TimerIcon sx={{ mr: 1, color: '#2e7d32' }} />
-              <Typography variant="h6" color="text.secondary">
-                Average Time
-              </Typography>
-            </Box>
-            <Typography variant="h3" component="div">
-              {stats?.averageTime || '0m'}
+            <TimerIcon sx={{ fontSize: 40, mb: 1 }} />
+            <Typography variant="h4" component="div">
+              {stats.timeSpent}m
             </Typography>
+            <Typography variant="body2">Time Spent</Typography>
           </Paper>
         </Grid>
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper
+            sx={{
+              p: 3,
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              bgcolor: 'info.light',
+              color: 'info.contrastText',
+            }}
+          >
+            <TrendingUpIcon sx={{ fontSize: 40, mb: 1 }} />
+            <Typography variant="h4" component="div">
+              {stats.improvement}%
+            </Typography>
+            <Typography variant="body2">Improvement</Typography>
+          </Paper>
+        </Grid>
+      </Grid>
 
-        {/* Recent Activity */}
-        <Grid item xs={12}>
+      {/* Quick Actions */}
+      <Box sx={{ mb: 4 }}>
+        <Typography variant="h5" gutterBottom>
+          Quick Actions
+        </Typography>
+        <Grid container spacing={2}>
+          <Grid item>
+            <Button
+              variant="contained"
+              onClick={() => navigate('/categories')}
+              startIcon={<QuizIcon />}
+            >
+              Start New Quiz
+            </Button>
+          </Grid>
+          <Grid item>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/my-quizzes')}
+              startIcon={<QuizIcon />}
+            >
+              My Quizzes
+            </Button>
+          </Grid>
+          <Grid item>
+            <Button
+              variant="outlined"
+              onClick={() => navigate('/create-quiz')}
+              startIcon={<QuizIcon />}
+            >
+              Create Quiz
+            </Button>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Recent Quizzes */}
+      <Box>
+        <Typography variant="h5" gutterBottom>
+          Recent Activity
+        </Typography>
+        <Grid container spacing={3}>
+          {recentQuizzes.length > 0 ? (
+            recentQuizzes.map((quiz) => (
+              <Grid item xs={12} sm={6} md={4} key={quiz.id}>
           <Card>
             <CardContent>
               <Typography variant="h6" gutterBottom>
-                Recent Activity
+                      {quiz.title}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" gutterBottom>
+                      {quiz.category?.name}
               </Typography>
-              <List>
-                {recentActivity.map((activity, index) => (
-                  <React.Fragment key={activity.id}>
-                    <ListItem>
-                      <ListItemText
-                        primary={activity.title}
-                        secondary={`${activity.date} - Score: ${activity.score}`}
+                    <Box sx={{ mt: 2 }}>
+                      <Chip
+                        label={`Score: ${quiz.score}%`}
+                        color={quiz.score >= 70 ? 'success' : quiz.score >= 40 ? 'warning' : 'error'}
+                        size="small"
+                        sx={{ mr: 1 }}
                       />
-                    </ListItem>
-                    {index < recentActivity.length - 1 && <Divider />}
-                  </React.Fragment>
-                ))}
-                {recentActivity.length === 0 && (
-                  <ListItem>
-                    <ListItemText primary="No recent activity" />
-                  </ListItem>
-                )}
-              </List>
+                      <Chip
+                        label={`Time: ${quiz.timeSpent}m`}
+                        variant="outlined"
+                        size="small"
+                      />
+                    </Box>
             </CardContent>
+                  <CardActions>
+                    <Button
+                      size="small"
+                      onClick={() => navigate(`/quiz/${quiz.id}`)}
+                    >
+                      Retake Quiz
+                    </Button>
+                    <Button
+                      size="small"
+                      onClick={() => navigate(`/results/${quiz.id}`)}
+                    >
+                      View Results
+                    </Button>
+                  </CardActions>
           </Card>
+              </Grid>
+            ))
+          ) : (
+            <Grid item xs={12}>
+              <Alert severity="info">
+                No recent quiz activity. Start a new quiz to begin your learning journey!
+              </Alert>
+            </Grid>
+          )}
         </Grid>
-      </Grid>
+      </Box>
     </Container>
   );
 };

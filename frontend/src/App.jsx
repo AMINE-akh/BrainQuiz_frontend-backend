@@ -1,59 +1,55 @@
-import React from 'react';
-import { 
-  BrowserRouter as Router, 
-  Routes, 
-  Route, 
-  Navigate,
-  createBrowserRouter,
-  RouterProvider
-} from 'react-router-dom';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
-import { AuthProvider, useAuth } from './contexts/AuthContext';
+import theme from './theme';
+import { AuthProvider } from './contexts/AuthContext';
+import Navbar from './components/Navbar';
 import Home from './components/Home';
 import Login from './components/auth/Login';
 import Register from './components/auth/Register';
+import Dashboard from './components/Dashboard';
 import Categories from './components/Categories';
 import Quiz from './components/Quiz';
 import Results from './components/Results';
 import CreateQuiz from './components/CreateQuiz';
-import Dashboard from './components/Dashboard';
 import MyQuizzes from './components/MyQuizzes';
-import Navbar from './components/Navbar';
+import LoadingOverlay from './components/LoadingOverlay';
+import ProtectedRoute from './components/ProtectedRoute';
 
-const theme = createTheme({
-  palette: {
-    primary: {
-      main: '#1976d2',
-    },
-    background: {
-      default: '#f5f5f5',
-    },
-  },
-  typography: {
-    fontFamily: '"Roboto", "Helvetica", "Arial", sans-serif',
-  },
-});
+const AppContent = () => {
+  const [isLoading, setIsLoading] = useState(true);
+  const location = useLocation();
 
-// Protected Route Component
-const ProtectedRoute = ({ children }) => {
-  const { user, loading } = useAuth();
+  useEffect(() => {
+    // Show loading when route changes
+    setIsLoading(true);
+    
+    // Simulate loading time (you can remove this in production)
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 1000);
 
-  if (loading) {
-    return null; // or a loading spinner
-  }
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
-  if (!user) {
-    return <Navigate to="/login" replace />;
-  }
-
-  return children;
+  // Show loading on initial page load
+  useEffect(() => {
+    const handleLoad = () => {
+      setIsLoading(false);
 };
 
-// Root layout component that includes the Navbar
-const RootLayout = () => {
+    if (document.readyState === 'complete') {
+      handleLoad();
+    } else {
+      window.addEventListener('load', handleLoad);
+      return () => window.removeEventListener('load', handleLoad);
+    }
+  }, []);
+
   return (
     <>
+      {isLoading && <LoadingOverlay />}
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -119,7 +115,7 @@ const App = () => {
       <CssBaseline />
       <AuthProvider>
         <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-          <RootLayout />
+          <AppContent />
         </Router>
       </AuthProvider>
     </ThemeProvider>

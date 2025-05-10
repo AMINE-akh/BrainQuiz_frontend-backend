@@ -51,7 +51,7 @@ const categories = [
   },
   {
     id: 6,
-    name: 'General Knowledge',
+    name: 'Know It All',
     icon: <School sx={{ fontSize: 40 }} />,
     color: '#D4A5A5',
   },

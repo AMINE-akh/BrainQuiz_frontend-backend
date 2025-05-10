@@ -11,8 +11,13 @@ import {
   Grid,
   MenuItem,
   Divider,
+  Select,
+  FormControl,
+  InputLabel,
+  Card,
+  CardMedia,
 } from '@mui/material';
-import { Add as AddIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { Add as AddIcon, Delete as DeleteIcon, CloudUpload as CloudUploadIcon } from '@mui/icons-material';
 
 const categories = [
   'History',
@@ -23,6 +28,13 @@ const categories = [
   'General Knowledge',
 ];
 
+const questionTypes = [
+  { value: 'text', label: 'Text Question' },
+  { value: 'image', label: 'Image Question' },
+  { value: 'video', label: 'Video Question' },
+  { value: 'audio', label: 'Audio Question' },
+];
+
 const CreateQuiz = () => {
   const navigate = useNavigate();
   const [quiz, setQuiz] = useState({
@@ -31,7 +43,9 @@ const CreateQuiz = () => {
     description: '',
     questions: [
       {
+        type: 'text',
         question: '',
+        mediaUrl: '',
         options: ['', '', '', ''],
         correctAnswer: 0,
       },
@@ -81,13 +95,22 @@ const CreateQuiz = () => {
     });
   };
 
+  const handleMediaUpload = async (questionIndex, file) => {
+    // TODO: Implement actual file upload to server
+    // For now, we'll just create a local URL
+    const mediaUrl = URL.createObjectURL(file);
+    handleQuestionChange(questionIndex, 'mediaUrl', mediaUrl);
+  };
+
   const addQuestion = () => {
     setQuiz((prev) => ({
       ...prev,
       questions: [
         ...prev.questions,
         {
+          type: 'text',
           question: '',
+          mediaUrl: '',
           options: ['', '', '', ''],
           correctAnswer: 0,
         },
@@ -107,6 +130,42 @@ const CreateQuiz = () => {
     // TODO: Implement API call to save quiz
     console.log('Quiz data:', quiz);
     navigate('/categories');
+  };
+
+  const renderMediaPreview = (question) => {
+    if (!question.mediaUrl) return null;
+
+    switch (question.type) {
+      case 'image':
+        return (
+          <Card sx={{ mt: 2, mb: 2 }}>
+            <CardMedia
+              component="img"
+              image={question.mediaUrl}
+              alt="Question image"
+              sx={{ maxHeight: 300, objectFit: 'contain' }}
+            />
+          </Card>
+        );
+      case 'video':
+        return (
+          <Box sx={{ mt: 2, mb: 2 }}>
+            <video
+              controls
+              src={question.mediaUrl}
+              style={{ maxWidth: '100%', maxHeight: 300 }}
+            />
+          </Box>
+        );
+      case 'audio':
+        return (
+          <Box sx={{ mt: 2, mb: 2 }}>
+            <audio controls src={question.mediaUrl} style={{ width: '100%' }} />
+          </Box>
+        );
+      default:
+        return null;
+    }
   };
 
   return (
@@ -191,6 +250,21 @@ const CreateQuiz = () => {
                       <DeleteIcon />
                     </IconButton>
 
+                    <FormControl fullWidth sx={{ mb: 3 }}>
+                      <InputLabel>Question Type</InputLabel>
+                      <Select
+                        value={question.type}
+                        label="Question Type"
+                        onChange={(e) => handleQuestionChange(questionIndex, 'type', e.target.value)}
+                      >
+                        {questionTypes.map((type) => (
+                          <MenuItem key={type.value} value={type.value}>
+                            {type.label}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+
                     <TextField
                       fullWidth
                       label={`Question ${questionIndex + 1}`}
@@ -201,6 +275,35 @@ const CreateQuiz = () => {
                       required
                       sx={{ mb: 3 }}
                     />
+
+                    {question.type !== 'text' && (
+                      <Box sx={{ mb: 3 }}>
+                        <input
+                          accept={
+                            question.type === 'image'
+                              ? 'image/*'
+                              : question.type === 'video'
+                              ? 'video/*'
+                              : 'audio/*'
+                          }
+                          style={{ display: 'none' }}
+                          id={`media-upload-${questionIndex}`}
+                          type="file"
+                          onChange={(e) => handleMediaUpload(questionIndex, e.target.files[0])}
+                        />
+                        <label htmlFor={`media-upload-${questionIndex}`}>
+                          <Button
+                            variant="outlined"
+                            component="span"
+                            startIcon={<CloudUploadIcon />}
+                            fullWidth
+                          >
+                            Upload {question.type.charAt(0).toUpperCase() + question.type.slice(1)}
+                          </Button>
+                        </label>
+                        {renderMediaPreview(question)}
+                      </Box>
+                    )}
 
                     {question.options.map((option, optionIndex) => (
                       <Box

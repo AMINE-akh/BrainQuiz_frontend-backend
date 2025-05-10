@@ -51,8 +51,8 @@ class CategorySeeder extends Seeder
                 'description' => 'Learn about human behavior, mental processes, and psychological theories.'
             ],
             [
-                'name' => 'General Knowledge',
-                'slug' => 'general-knowledge',
+                'name' => 'Know It All',
+                'slug' => 'know-it-all',
                 'icon' => 'lightbulb',
                 'color' => '#FFC107',
                 'description' => 'A mix of questions from various fields to test your overall knowledge.'
